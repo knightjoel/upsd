@@ -152,6 +152,8 @@ int main(int argc, char *argv[])
 		memset(&ups_msg, 0, sizeof(ups_msg));
 	}
 
+	syslog(LOG_INFO, "exiting");
+	close(fd);
 
 	return (0);
 }
