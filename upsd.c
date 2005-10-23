@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -25,10 +26,11 @@
 #include <pwd.h>
 
 
+#define CHROOT			"/var/empty"
 #define UID			"nobody"
 #define GID			"nobody"
 #define UPS_DEV			"/dev/uhid0"
-#define CHROOT			"/var/empty"
+#define RTCRIT			5	/* minutes */
 
 #define MSG_SIZE		9
 
@@ -47,6 +49,7 @@
 extern char *__progname;
 
 float get_runtime(int);
+__dead2 void usage(void);
 
 
 int main(int argc, char *argv[])
@@ -56,22 +59,31 @@ int main(int argc, char *argv[])
 	unsigned char ups_msg[MSG_SIZE];
 	char src[BUFSIZ] = "?";
 	int bat = 0;
-        float rt = 0;
-	int fd, i;
+	float rt = 0, rtcrit = RTCRIT;
+	int ch, fd, i;
 	int lastsrc = 0;
 	time_t t;
 
 	tzset();
 	openlog("upsd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
 
-	if (argc > 2) 
-		errx(1, "Usage: %s [device]\n", __progname);
-
 	if (getuid())
 		errx(1, "Must be run as root");
 
-	if (argc == 2)
-		ups_dev = argv[1];
+	while ((ch = getopt(argc, argv, "c:d:h")) != -1) {
+		switch (ch) {
+		case 'c':
+			rtcrit = atof(optarg);
+			break;
+		case 'd':
+			ups_dev = optarg;
+			break;
+		case 'h':
+		default:
+			usage();
+			/* NOT REACHED */
+		}
+	}
 
 	if ((fd = open(ups_dev, O_RDONLY)) == -1) {
 		perror("Unable to open USB device");
@@ -98,7 +110,8 @@ int main(int argc, char *argv[])
 	seteuid(pwent->pw_uid);
 	setuid(pwent->pw_uid);
 
-	syslog(LOG_INFO, "starting up (device = %s)", ups_dev);
+	syslog(LOG_INFO, "starting up (device = %s, runtime critical = %.1fmin)", 
+			ups_dev, rtcrit);
 
 	memset(&ups_msg, 0, sizeof(ups_msg));
 	while (read(fd, ups_msg, sizeof(ups_msg)) > 0) {
@@ -131,6 +144,8 @@ int main(int argc, char *argv[])
 						&& t <= time(NULL)) {
 					syslog(LOG_INFO, "battery status: battery=%d%%, runtime=%.1fmin", 
 						bat, rt);
+					if (rt <= rtcrit)
+						syslog(LOG_WARNING, "BATTERY CRITICAL: runtime=%.1fmin, threshold=%.1fmin", rt, rtcrit);
 					t = time(NULL)+60;
 				}
 				break;
@@ -158,5 +173,14 @@ float get_runtime(int ups_runtime)
 	rt = ups_runtime * UPS_LOAD_FACTOR;
 	rt = (rt / 3600) * 60;
 	return (rt);
+}
+
+__dead2 void
+usage(void)
+{
+	printf("upsd: $Revision$ \n");
+	printf("Usage: %s [-c critlevel] [-d usbdev]\n", __progname);
+
+	exit(1);
 }
 
