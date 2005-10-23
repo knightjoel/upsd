@@ -116,43 +116,43 @@ int main(int argc, char *argv[])
 	memset(&ups_msg, 0, sizeof(ups_msg));
 	while (read(fd, ups_msg, sizeof(ups_msg)) > 0) {
 		switch (ups_msg[0]) {
-			case UPS_POWER:
-				switch (ups_msg[1]) {
-					case UPS_POWER_BAT:
-						sprintf(src, "%s", "on battery");
-						break;
-					case UPS_POWER_UTIL:
-						sprintf(src, "%s", "utility power");
-						break;
-					case UPS_POWER_UTIL_CHRG:
-						sprintf(src, "%s", "charging battery");
-						break;
-					default:
-						sprintf(src, "%s", "unknown");
-						break;
-				}
-				if (ups_msg[1] != lastsrc) {
-					syslog(LOG_INFO, "state change to: %s", src);
-					t = 0;
-				}
-				lastsrc = ups_msg[1];
+		case UPS_POWER:
+			switch (ups_msg[1]) {
+			case UPS_POWER_BAT:
+				sprintf(src, "%s", "on battery");
 				break;
-			case UPS_BATTERY:
-				bat = ups_msg[1];
-				rt = get_runtime(ups_msg[2]);
-				if ((lastsrc == UPS_POWER_BAT || lastsrc == UPS_POWER_UTIL_CHRG)
-						&& t <= time(NULL)) {
-					syslog(LOG_INFO, "battery status: battery=%d%%, runtime=%.1fmin", 
-						bat, rt);
-					if (rt <= rtcrit)
-						syslog(LOG_WARNING, "BATTERY CRITICAL: runtime=%.1fmin, threshold=%.1fmin", rt, rtcrit);
-					t = time(NULL)+60;
-				}
+			case UPS_POWER_UTIL:
+				sprintf(src, "%s", "utility power");
 				break;
-			case UPS_LOAD:
-				//printf("%% ups load = %d; estimated runtime = %.1fmin (%d)\n", 
-				//	ups_msg[1], get_runtime(ups_msg[2]), ups_msg[2]);
+			case UPS_POWER_UTIL_CHRG:
+				sprintf(src, "%s", "charging battery");
 				break;
+			default:
+				sprintf(src, "%s", "unknown");
+				break;
+			}
+			if (ups_msg[1] != lastsrc) {
+				syslog(LOG_INFO, "state change to: %s", src);
+				t = 0;
+			}
+			lastsrc = ups_msg[1];
+			break;
+		case UPS_BATTERY:
+			bat = ups_msg[1];
+			rt = get_runtime(ups_msg[2]);
+			if ((lastsrc == UPS_POWER_BAT || lastsrc == UPS_POWER_UTIL_CHRG)
+					&& t <= time(NULL)) {
+				syslog(LOG_INFO, "battery status: battery=%d%%, runtime=%.1fmin", 
+					bat, rt);
+				if (rt <= rtcrit)
+					syslog(LOG_WARNING, "BATTERY CRITICAL: runtime=%.1fmin, threshold=%.1fmin", rt, rtcrit);
+				t = time(NULL)+60;
+			}
+			break;
+		case UPS_LOAD:
+			//printf("%% ups load = %d; estimated runtime = %.1fmin (%d)\n", 
+			//	ups_msg[1], get_runtime(ups_msg[2]), ups_msg[2]);
+			break;
 		}
 		
 		setproctitle("%s [%d%%/%.1fmin]", src, bat, rt);
