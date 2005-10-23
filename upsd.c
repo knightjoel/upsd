@@ -114,6 +114,9 @@ int main(int argc, char *argv[])
 					case UPS_POWER_UTIL_CHRG:
 						sprintf(src, "%s", "charging battery");
 						break;
+					default:
+						sprintf(src, "%s", "unknown");
+						break;
 				}
 				if (ups_msg[1] != lastsrc) {
 					syslog(LOG_INFO, "state change to: %s", src);
