@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	char src[BUFSIZ] = "?";
 	int bat = 0;
         float rt = 0;
-	int fd, msize, i;
+	int fd, i;
 	int lastsrc = 0;
 	time_t t;
 
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	syslog(LOG_INFO, "starting up (device = %s)", ups_dev);
 
 	memset(&ups_msg, 0, sizeof(ups_msg));
-	while ((msize = read(fd, ups_msg, sizeof(ups_msg))) > 0) {
+	while (read(fd, ups_msg, sizeof(ups_msg)) > 0) {
 		switch (ups_msg[0]) {
 			case UPS_POWER:
 				switch (ups_msg[1]) {
@@ -137,14 +137,6 @@ int main(int argc, char *argv[])
 			case UPS_LOAD:
 				//printf("%% ups load = %d; estimated runtime = %.1fmin (%d)\n", 
 				//	ups_msg[1], get_runtime(ups_msg[2]), ups_msg[2]);
-				break;
-			default:
-				/*
-				printf("Got (%d) ", msize);
-				for (i = 0; i < msize; i++)
-					printf("%3d ", ups_msg[i]);
-				printf("\n");
-				*/
 				break;
 		}
 		
